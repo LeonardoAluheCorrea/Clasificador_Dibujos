@@ -35,17 +35,31 @@ export default function ClasificadorDibujosApp() {
     localStorage.setItem('clasificador_dataset_v1', JSON.stringify(dataset));
   }, [dataset]);
 
-  const capture = () => {
-    if (!webcamRef.current) return alert('Cámara no lista');
-    const imageSrc = webcamRef.current.getScreenshot();
-    if (!imageSrc) return alert('No se pudo capturar la imagen');
-    setDataset((prev) => {
-      const copy = { ...prev };
-      if (!copy[currentCat]) copy[currentCat] = [];
-      copy[currentCat].push(imageSrc);
-      return copy;
-    });
-  };
+const capture = () => {
+  if (!webcamRef.current) {
+    console.warn("Webcam no lista aún");
+    return;
+  }
+
+  // Intentar obtener la imagen
+  const img = webcamRef.current.getScreenshot();
+
+  // Si no hay imagen todavía, no bloquear: solo avisar
+  if (!img) {
+    console.warn("No se pudo capturar (aún no hay frame listo)");
+    return;
+  }
+
+  // Guardar correctamente
+  setDataset((prev) => {
+    const copy = { ...prev };
+    if (!copy[currentCat]) copy[currentCat] = [];
+    copy[currentCat].push(img);
+    return copy;
+  });
+};
+
+
 
   const addCategory = () => {
     const name = prompt('Nombre de la nueva categoría:');
@@ -102,6 +116,28 @@ export default function ClasificadorDibujosApp() {
     model.compile({ optimizer: tf.train.adam(0.001), loss: 'categoricalCrossentropy', metrics: ['accuracy'] });
     return model;
   };
+  const deleteCategory = (cat) => {
+  if (!confirm(`¿Eliminar la categoría "${cat}" y todas sus imágenes?`)) return;
+
+  // Borrar de categorías
+  setCategories((prev) => prev.filter((c) => c !== cat));
+
+  // Borrar del dataset
+  setDataset((prev) => {
+    const copy = { ...prev };
+    delete copy[cat];
+    return copy;
+  });
+
+  // Si era la categoría seleccionada, mover a otra
+  if (currentCat === cat) {
+    const remaining = categories.filter((c) => c !== cat);
+    setCurrentCat(remaining.length > 0 ? remaining[0] : '');
+  }
+
+  // Quitar predicción si ya no tiene sentido
+  setPrediction(null);
+};
 
   const waitOrSkip = async (ms) => {
     const step = 50;
@@ -391,100 +427,141 @@ export default function ClasificadorDibujosApp() {
     );
   };
 
-  return (
-    <div className="p-4 max-w-4xl mx-auto font-sans">
-      <h1 className="text-2xl font-bold mb-3">Clasificador de Dibujos (React + TensorFlow.js)</h1>
+return (
+  <div className="p-4 max-w-4xl mx-auto font-sans">
+    <h1 className="text-2xl font-bold mb-3">Clasificador de Dibujos (React + TensorFlow.js)</h1>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <div className="mb-2">Cámara</div>
-          <Webcam audio={false} screenshotFormat="image/jpeg" ref={webcamRef} videoConstraints={{ facingMode: 'user' }} width={320} height={240} />
-          <div className="mt-2 flex gap-2">
-            <select value={currentCat} onChange={(e) => setCurrentCat(e.target.value)}>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <button onClick={capture} className="px-2 py-1 border rounded">
-              Capturar
-            </button>
-            <button onClick={addCategory} className="px-2 py-1 border rounded">
-              Nueva categoría
-            </button>
-          </div>
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <div className="mb-2">Cámara</div>
 
-          <div className="mt-3">
-            <strong>Dataset (por categoría)</strong>
-            <div className="max-h-40 overflow-auto border p-2 mt-1">
-              {Object.keys(dataset).length === 0 && <div className="text-sm text-gray-500">(vacío)</div>}
-              {Object.entries(dataset).map(([k, arr]) => (
-                <div key={k} className="mb-2">
+        <Webcam
+          audio={false}
+          screenshotFormat="image/jpeg"
+          ref={webcamRef}
+          videoConstraints={{ facingMode: 'user' }}
+          width={320}
+          height={240}
+        />
+
+        <div className="mt-2 flex gap-2">
+          <select value={currentCat} onChange={(e) => setCurrentCat(e.target.value)}>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+
+          <button onClick={capture} className="px-2 py-1 border rounded">
+            Capturar
+          </button>
+
+          <button onClick={addCategory} className="px-2 py-1 border rounded">
+            Nueva categoría
+          </button>
+        </div>
+
+        {/* --- DATASET --- */}
+        <div className="mt-3">
+          <strong>Dataset (por categoría)</strong>
+
+          <div className="max-h-40 overflow-auto border p-2 mt-1">
+
+            {Object.keys(dataset).length === 0 && (
+              <div className="text-sm text-gray-500">(vacío)</div>
+            )}
+
+            {Object.entries(dataset).map(([k, arr]) => (
+              <div key={k} className="mb-3">
+                <div className="flex justify-between items-center">
                   <div className="font-semibold">
                     {k} — {arr.length} imágenes
                   </div>
-                  <div className="flex gap-1 overflow-auto">
-                    {arr.slice(-6).map((b64, i) => (
-                      <img key={i} src={b64} style={{ width: 50, height: 50, objectFit: 'cover' }} alt="m" />
-                    ))}
-                  </div>
+
+                  <button
+                    onClick={() => deleteCategory(k)}
+                    className="px-2 py-1 text-xs border rounded bg-red-200 hover:bg-red-300"
+                  >
+                    🗑️ Borrar
+                  </button>
                 </div>
-              ))}
-            </div>
 
-            <div className="mt-2 flex gap-2">
-              <button onClick={trainModel} disabled={training} className="px-3 py-1 border rounded">
-                Entrenar
-              </button>
-              <button onClick={handleSkipEpochs} disabled={!training} className="px-3 py-1 border rounded">
-                ⏩ Adelantar épocas
-              </button>
-              <button onClick={predictOnce} className="px-3 py-1 border rounded">
-                Probar (predecir)
-              </button>
-              <button onClick={exportDataset} className="px-3 py-1 border rounded">
-                Exportar dataset
-              </button>
-              <label className="px-3 py-1 border rounded cursor-pointer">
-                Importar
-                <input type="file" accept="application/json" onChange={importDataset} style={{ display: 'none' }} />
-              </label>
-              <button onClick={clearDataset} className="px-3 py-1 border rounded">
-                Borrar dataset
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <NetworkViz
-            activations={activations}
-            categories={categories}
-            prediction={prediction}
-            training={training}
-            currentEpoch={currentEpoch}
-            totalEpochs={EPOCHS}
-            activeLayerIndex={activeLayerIndex}
-          />
-
-          <div className="mt-3">
-            <strong>Predicción</strong>
-            <div className="border p-2 mt-1">
-              {!prediction && <div className="text-sm text-gray-500">Realiza una predicción para ver los porcentajes.</div>}
-              {prediction && (
-                <div>
-                  {prediction.map((p, i) => (
-                    <div key={i}>
-                      {p.label}: {(p.prob * 100).toFixed(1)}%
-                    </div>
+                <div className="flex gap-1 overflow-auto mt-1">
+                  {arr.slice(-6).map((b64, i) => (
+                    <img
+                      key={i}
+                      src={b64}
+                      style={{ width: 50, height: 50, objectFit: 'cover' }}
+                      alt="m"
+                    />
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-2 flex gap-2">
+            <button onClick={trainModel} disabled={training} className="px-3 py-1 border rounded">
+              Entrenar
+            </button>
+
+            <button onClick={handleSkipEpochs} disabled={!training} className="px-3 py-1 border rounded">
+              ⏩ Adelantar épocas
+            </button>
+
+            <button onClick={predictOnce} className="px-3 py-1 border rounded">
+              Probar (predecir)
+            </button>
+
+            <button onClick={exportDataset} className="px-3 py-1 border rounded">
+              Exportar dataset
+            </button>
+
+            <label className="px-3 py-1 border rounded cursor-pointer">
+              Importar
+              <input type="file" accept="application/json" onChange={importDataset} style={{ display: 'none' }} />
+            </label>
+
+            <button onClick={clearDataset} className="px-3 py-1 border rounded">
+              Borrar dataset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* --- VISUALIZACIÓN DE RED --- */}
+      <div>
+        <NetworkViz
+          activations={activations}
+          categories={categories}
+          prediction={prediction}
+          training={training}
+          currentEpoch={currentEpoch}
+          totalEpochs={EPOCHS}
+          activeLayerIndex={activeLayerIndex}
+        />
+
+        <div className="mt-3">
+          <strong>Predicción</strong>
+          <div className="border p-2 mt-1">
+            {!prediction && (
+              <div className="text-sm text-gray-500">Realiza una predicción para ver los porcentajes.</div>
+            )}
+
+            {prediction && (
+              <div>
+                {prediction.map((p, i) => (
+                  <div key={i}>
+                    {p.label}: {(p.prob * 100).toFixed(1)}%
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
