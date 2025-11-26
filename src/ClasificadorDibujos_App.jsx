@@ -139,6 +139,17 @@ const capture = () => {
   setPrediction(null);
 };
 
+const deleteImage = (cat, index) => {
+  if (!confirm("¿Eliminar esta imagen?")) return;
+
+  setDataset(prev => {
+    const copy = { ...prev };
+    copy[cat] = copy[cat].filter((_, i) => i !== index);
+    return copy;
+  });
+};
+
+
   const waitOrSkip = async (ms) => {
     const step = 50;
     let waited = 0;
