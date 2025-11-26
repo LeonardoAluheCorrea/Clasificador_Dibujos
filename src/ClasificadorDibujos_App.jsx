@@ -438,8 +438,17 @@ const deleteImage = (cat, index) => {
     );
   };
 
-return (
-  <div className="p-4 max-w-4xl mx-auto font-sans">
+  return (
+<div
+  className="p-4 max-w-4xl mx-auto font-sans"
+  style={{
+    backgroundColor: 'white',
+    borderRadius: '16px',
+    padding: '24px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+  }}
+>
+
     <h1 className="text-2xl font-bold mb-3">Clasificador de Dibujos (React + TensorFlow.js)</h1>
 
     <div className="grid grid-cols-2 gap-4">
@@ -474,8 +483,16 @@ return (
         </div>
 
         {/* --- DATASET --- */}
-        <div className="mt-3">
-          <strong>Dataset (por categoría)</strong>
+{/* --- DATASET --- */}
+<div
+  className="mt-8"   
+  style={{
+    paddingTop: '16px',
+    borderTop: '2px solid rgba(0,0,0,0.15)',   // línea separadora opcional
+  }}
+>
+  <strong>Dataset (por categoría)</strong>
+
 
           <div className="max-h-40 overflow-auto border p-2 mt-1">
 
@@ -484,30 +501,99 @@ return (
             )}
 
             {Object.entries(dataset).map(([k, arr]) => (
-              <div key={k} className="mb-3">
-                <div className="flex justify-between items-center">
-                  <div className="font-semibold">
-                    {k} — {arr.length} imágenes
-                  </div>
+              <div
+  key={k}
+  className="mb-8"    
+  style={{
+    paddingBottom: '12px',
+    borderBottom: '1px solid rgba(0,0,0,0.1)',   // división clara entre categorías
+  }}
+>
 
-                  <button
-                    onClick={() => deleteCategory(k)}
-                    className="px-2 py-1 text-xs border rounded bg-red-200 hover:bg-red-300"
-                  >
-                    🗑️ Borrar
-                  </button>
-                </div>
+<div
+  className="flex justify-between items-center"
+  style={{
+    marginBottom: '12px',  
+    paddingBottom: '4px',
+    borderBottom: '1px solid rgba(0,0,0,0.1)', 
+  }}
+>
+  <div className="font-semibold">
+    {k} — {arr.length} imágenes
+  </div>
 
-                <div className="flex gap-1 overflow-auto mt-1">
-                  {arr.slice(-6).map((b64, i) => (
-                    <img
-                      key={i}
-                      src={b64}
-                      style={{ width: 50, height: 50, objectFit: 'cover' }}
-                      alt="m"
-                    />
-                  ))}
-                </div>
+  <button
+    onClick={() => deleteCategory(k)}
+    className="px-2 py-1 text-xs border rounded bg-red-200 hover:bg-red-300"
+  >
+    🗑️ Borrar
+  </button>
+</div>
+
+
+                <div
+  className="overflow-x-auto mt-2"
+  style={{
+    display: 'flex',
+    flexDirection: 'row',
+    gap: '8px',
+    alignItems: 'flex-start',
+    whiteSpace: 'nowrap', // evita que las miniaturas hagan wrap a la siguiente línea
+    paddingBottom: '4px',
+  }}
+>
+  {arr.map((b64, i) => (
+    <div
+      key={i}
+      style={{
+        position: 'relative',
+        width: 50,
+        height: 50,
+        flex: '0 0 50px', // evita que se reduzcan y fuerza el ancho fijo
+        borderRadius: 4,
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+      }}
+    >
+      <img
+        src={b64}
+        alt={`img-${i}`}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'block',
+        }}
+      />
+
+      <button
+        onClick={() => deleteImage(k, i)}
+        title="Borrar imagen"
+        style={{
+          position: 'absolute',
+          top: 4,
+          right: 4,
+          background: 'rgba(0,0,0,0.6)',
+          color: 'white',
+          border: 'none',
+          borderRadius: '50%',
+          width: 20,
+          height: 20,
+          fontSize: 12,
+          lineHeight: '20px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 0,
+        }}
+      >
+        ✖
+      </button>
+    </div>
+  ))}
+</div>
+
               </div>
             ))}
           </div>
